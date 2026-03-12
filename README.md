@@ -1,221 +1,157 @@
-# Trading Bot - Projeto Completo
+# Trading Bot — Projeto Acadêmico
 
-Um aplicativo mobile de bot de trading automatizado para a B3 (Bolsa de Valores Brasileira), com backend em Python e frontend em React Native.
+Aplicativo mobile de **bot de trading automatizado** para a B3 (Bolsa de Valores Brasileira), desenvolvido com backend em Python e frontend em React Native.
+
+> 🎓 Projeto acadêmico — opera exclusivamente em modo **paper trading** (simulação sem dinheiro real).
+
+---
 
 ## 📱 Visão Geral
 
-Este projeto implementa um sistema completo de trading automatizado com:
+O sistema simula um robô de trading que aplica a estratégia de **cruzamento de médias móveis (MA Crossover)** em ativos da B3. O usuário pode configurar parâmetros, acompanhar operações em tempo real, realizar backtests e executar ordens manualmente.
 
-- **Dashboard** - Visão geral do bot com gráficos em tempo real
-- **Configuração de Estratégia** - Personalização de parâmetros de trading
-- **Backtesting** - Validação de estratégias com dados históricos
-- **Logs** - Histórico detalhado de todas as ações do bot
-- **Configurações** - Gerenciamento de API keys e preferências
-- **Paper Trading** - Simulação de trades sem risco real
+### Telas do aplicativo
+
+| Tela | Descrição |
+|---|---|
+| **Dashboard** | Gráfico de preço + MAs em tempo real, saldo simulado, P/L do dia, controle do bot |
+| **Estratégia** | Configuração do ativo, timeframe, períodos das MAs, stop loss e take profit |
+| **Backtest** | Simulação histórica com equity curve, win rate, max drawdown, Sharpe Ratio |
+| **Trades** | Execução manual de ordens de compra/venda, posição aberta, histórico |
+| **Logs** | Histórico completo de ações do bot com filtros por nível |
+| **Configurações** | API keys, saldo simulado, modo paper trading, tema claro/escuro |
+
+---
 
 ## 🛠️ Tecnologias
 
 ### Backend
-- **Python 3.11+**
-- **FastAPI** - Framework web moderno e rápido
-- **PostgreSQL** - Banco de dados relacional
-- **SQLAlchemy** - ORM assíncrono
-- **MetaTrader5** - Conexão com a B3
-- **Pandas & Pandas-TA** - Análise técnica
+- **Python 3.11** + **FastAPI** — API REST assíncrona
+- **PostgreSQL 15** — banco de dados relacional
+- **SQLAlchemy** (async) — ORM
+- **Pandas / NumPy** — análise técnica e backtesting
+- **Docker** — containerização do ambiente
 
 ### Mobile
-- **React Native** (Expo)
-- **TypeScript**
-- **Zustand** - Gerenciamento de estado
-- **React Navigation** - Navegação
+- **React Native** (Expo SDK 50)
+- **TypeScript** — tipagem estática em todo o frontend
+- **Zustand** — gerenciamento de estado
+- **React Navigation** — navegação por abas
+- **react-native-chart-kit** — gráficos de linha
+
+---
 
 ## 📁 Estrutura do Projeto
 
 ```
-bot_projeto/
+leonardo_projeto/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   └── endpoints/
-│   │   │       ├── auth.py
-│   │   │       ├── dashboard.py
-│   │   │       ├── strategy.py
-│   │   │       ├── backtest.py
-│   │   │       ├── trades.py
-│   │   │       ├── logs.py
-│   │   │       └── settings.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── database.py
-│   │   │   └── security.py
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   ├── strategy.py
-│   │   │   ├── trade.py
-│   │   │   ├── backtest.py
-│   │   │   ├── log.py
-│   │   │   └── settings.py
-│   │   ├── schemas/
-│   │   │   └── schemas.py
-│   │   ├── services/
-│   │   │   ├── metatrader_service.py
-│   │   │   ├── technical_analysis_service.py
-│   │   │   ├── backtesting_service.py
-│   │   │   └── bot_manager.py
+│   │   ├── api/endpoints/      # auth, dashboard, strategy, backtest, trades, logs, settings
+│   │   ├── core/               # config, database, security
+│   │   ├── models/             # SQLAlchemy ORM (user, strategy, trade, backtest, log, settings)
+│   │   ├── schemas/            # Pydantic schemas
+│   │   ├── services/           # bot_manager, backtesting_service, metatrader_service, technical_analysis_service
 │   │   └── main.py
-│   ├── requirements.txt
-│   └── .env.example
+│   ├── Dockerfile
+│   └── requirements.txt
 │
-└── mobile/
-    ├── src/
-    │   ├── components/
-    │   │   └── index.tsx
-    │   ├── navigation/
-    │   │   └── index.tsx
-    │   ├── screens/
-    │   │   ├── Dashboard/
-    │   │   ├── Strategy/
-    │   │   ├── Backtest/
-    │   │   ├── Logs/
-    │   │   ├── Settings/
-    │   │   └── PaperTrading/
-    │   ├── services/
-    │   │   ├── api.ts
-    │   │   └── index.ts
-    │   ├── store/
-    │   │   ├── authStore.ts
-    │   │   ├── themeStore.ts
-    │   │   └── strategyStore.ts
-    │   └── types/
-    │       └── index.ts
-    ├── App.tsx
-    ├── package.json
-    └── app.json
+├── mobile/
+│   ├── src/
+│   │   ├── components/         # componentes reutilizáveis
+│   │   ├── navigation/         # configuração de abas
+│   │   ├── screens/            # Dashboard, Strategy, Backtest, Trades, Logs, Settings
+│   │   ├── services/           # cliente HTTP (axios)
+│   │   ├── store/              # authStore, strategyStore, themeStore (Zustand)
+│   │   └── types/              # interfaces TypeScript
+│   ├── App.tsx
+│   └── package.json
+│
+├── docker-compose.yml
+└── README.md
 ```
-
-## 🚀 Como Executar
-
-### Backend
-
-1. **Criar ambiente virtual:**
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
-```
-
-2. **Instalar dependências:**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Configurar variáveis de ambiente:**
-```bash
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
-```
-
-4. **Iniciar o servidor:**
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-A API estará disponível em `http://localhost:8000`
-
-### Mobile
-
-1. **Instalar dependências:**
-```bash
-cd mobile
-npm install
-```
-
-2. **Iniciar o Expo:**
-```bash
-npm start
-```
-
-3. **Executar no dispositivo:**
-- Escaneie o QR code com o app Expo Go
-- Ou pressione `a` para Android / `i` para iOS
-
-## 📊 Funcionalidades
-
-### Dashboard
-- Gráfico de candlestick em tempo real
-- Status do bot (Running/Stopped)
-- P/L diário
-- Último trade executado
-- Controle de início/parada do bot
-
-### Configuração de Estratégia
-- Seleção de ativo (PETR4, VALE3, etc.)
-- Escolha de timeframe (1M, 5M, 1H, 1D)
-- Ajuste de períodos das médias móveis
-- Configuração de stop loss e take profit
-
-### Backtesting
-- Simulação com dados históricos
-- Métricas: Retorno Total, Win Rate, Max Drawdown, Sharpe Ratio
-- Gráfico de equity curve
-- Visualização de pontos de compra/venda
-
-### Logs
-- Histórico de ordens executadas
-- Erros de conexão
-- Atualizações do sistema
-- Filtro por nível (Success, Error, Info, Warning)
-
-### Settings
-- Configuração de API Key e Secret
-- Teste de conexão
-- Toggle Paper Trading
-- Toggle Dark Mode
-- Reset de saldo simulado
-
-### Paper Trading
-- Execução simulada de ordens
-- Saldo simulado inicial de R$ 10.000,00
-- Histórico de ordens simuladas
-- Acompanhamento de posições abertas
-
-## 🔒 Segurança
-
-- API Keys criptografadas no banco de dados
-- Autenticação JWT
-- Senhas hasheadas com bcrypt
-- Validação de dados com Pydantic
-
-## 📈 Indicadores Técnicos Disponíveis
-
-- Médias Móveis Simples (SMA)
-- Médias Móveis Exponenciais (EMA)
-- RSI (Índice de Força Relativa)
-- MACD
-- Bandas de Bollinger
-
-## 🎨 Tema
-
-O aplicativo suporta modo claro e escuro, com cores personalizadas:
-- **Verde** (#00d4aa) - Compra/Sucesso
-- **Vermelho** (#ff6b6b) - Venda/Erro
-- **Azul** (#0077ff) - Primary/Destaque
-
-## 📝 Próximos Passos
-
-- [ ] Implementar WebSocket para dados em tempo real
-- [ ] Adicionar mais estratégias de trading
-- [ ] Implementar notificações push
-- [ ] Adicionar autenticação biométrica
-- [ ] Integração completa com MetaTrader5
-- [ ] Testes automatizados
-
-## 📄 Licença
-
-Este projeto é para fins educacionais. Use por sua conta e risco.
 
 ---
 
-**Aviso:** Trading envolve riscos. Este software é fornecido "como está" sem garantias. Sempre teste estratégias em paper trading antes de operar com dinheiro real.
+## 🚀 Como Executar
+
+### Pré-requisitos
+- [Docker](https://www.docker.com/) e Docker Compose
+- [Node.js 18+](https://nodejs.org/) e npm
+- [Expo Go](https://expo.dev/client) no celular (opcional)
+
+### 1. Backend (Docker)
+
+```bash
+# Na raiz do projeto
+docker compose up -d
+```
+
+A API estará disponível em `http://localhost:8000`
+Documentação interativa (Swagger): `http://localhost:8000/docs`
+
+### 2. Mobile
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+Escaneie o QR code com o app **Expo Go**, ou pressione `a` para Android / `i` para iOS.
+
+> **Atenção:** se usar dispositivo físico, substitua `localhost` em `src/services/api.ts` pelo IP da sua máquina na rede local.
+
+---
+
+## 📊 Como Funciona o Bot
+
+O bot executa um loop a cada **30 segundos** com os seguintes passos:
+
+1. Busca a estratégia ativa do usuário no banco de dados
+2. Simula o preço do ativo com **random walk** (volatilidade realista ~0,5%/ciclo)
+3. Calcula as **médias móveis** (MA curta e MA longa)
+4. Detecta **cruzamentos**:
+   - MA curta cruza **acima** da longa → sinal de **COMPRA**
+   - MA curta cruza **abaixo** da longa → sinal de **VENDA**
+5. Aplica **stop loss** e **take profit** automáticos
+6. Registra trades e logs no banco de dados
+
+---
+
+## 🔒 Segurança
+
+- Autenticação **JWT** com expiração configurável
+- Senhas hasheadas com **bcrypt**
+- API Keys criptografadas no banco
+- Validação de dados com **Pydantic v2**
+
+---
+
+## 🎨 Design
+
+Interface minimalista em tema escuro com paleta desaturada:
+
+| Token | Cor | Uso |
+|---|---|---|
+| `primary` | `#4f83f8` | Botões, destaques |
+| `success` | `#34d399` | Compra, lucro, sucesso |
+| `error` | `#f87171` | Venda, prejuízo, erro |
+| `warning` | `#f59e0b` | Alertas |
+| `background` | `#0d1117` | Fundo principal |
+| `card` | `#1a2133` | Cards e containers |
+
+---
+
+## 📈 Indicadores Técnicos
+
+- **SMA / EMA** — Médias Móveis Simples e Exponenciais
+- **RSI** — Índice de Força Relativa
+- **MACD** — Moving Average Convergence Divergence
+- **Bandas de Bollinger**
+
+---
+
+## ⚠️ Aviso
+
+Este projeto é **exclusivamente para fins acadêmicos**. Opera somente em modo paper trading (simulação). Não constitui recomendação de investimento. Trading envolve riscos — sempre teste estratégias antes de operar com capital real.

@@ -232,8 +232,3 @@ class BotManager:
         """Retorna status atual do bot"""
         return "Running" if self.is_running else "Stopped"
 
-import asyncio
-from typing import Optional
-from datetime import datetime
-
-from app.services.metatrader_service import MetaTrader5Service

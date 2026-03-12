@@ -167,6 +167,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Strategy: undefined;
   Backtest: undefined;
+  Trades: undefined;
   Logs: undefined;
   Settings: undefined;
 };

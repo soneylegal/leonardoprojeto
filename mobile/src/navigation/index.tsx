@@ -13,6 +13,7 @@ import {
   BacktestScreen,
   LogsScreen,
   SettingsScreen,
+  PaperTradingScreen,
 } from '../screens';
 
 import { useThemeStore, getTheme } from '../store/themeStore';
@@ -42,6 +43,9 @@ function MainTabs() {
               break;
             case 'Backtest':
               iconName = focused ? 'analytics' : 'analytics-outline';
+              break;
+            case 'Trades':
+              iconName = focused ? 'cash' : 'cash-outline';
               break;
             case 'Logs':
               iconName = focused ? 'list' : 'list-outline';
@@ -80,12 +84,17 @@ function MainTabs() {
       <Tab.Screen 
         name="Strategy" 
         component={StrategyScreen}
-        options={{ title: 'Strategy' }}
+        options={{ title: 'Estratégia' }}
       />
       <Tab.Screen 
         name="Backtest" 
         component={BacktestScreen}
         options={{ title: 'Backtest' }}
+      />
+      <Tab.Screen 
+        name="Trades" 
+        component={PaperTradingScreen}
+        options={{ title: 'Trades' }}
       />
       <Tab.Screen 
         name="Logs" 
@@ -95,7 +104,7 @@ function MainTabs() {
       <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{ title: 'Configurações' }}
       />
     </Tab.Navigator>
   );
