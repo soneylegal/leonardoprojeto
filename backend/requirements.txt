@@ -1,0 +1,38 @@
+# Backend Trading Bot - Dependências
+# Framework Web
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+
+# Banco de Dados
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# MetaTrader5 (APENAS WINDOWS - instalar manualmente se necessário)
+# pip install MetaTrader5==5.0.45
+
+# Análise de Dados
+pandas==2.2.0
+numpy==1.26.3
+# Indicadores técnicos (instalação alternativa)
+# Para indicadores, usaremos implementação própria com numpy/pandas
+
+# Autenticação e Segurança
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Websockets para dados em tempo real
+websockets==12.0
+
+# Utilitários
+python-dotenv==1.0.0
+httpx==0.26.0
+apscheduler==3.10.4
+
+# Backtesting
+backtrader==1.9.78.123
