@@ -3,48 +3,51 @@
  */
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Alert, TextInput, ActivityIndicator,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useThemeStore, getTheme } from '../../store/themeStore';
 import { useStrategyStore } from '../../store/strategyStore';
 import { TimeframeType, Asset } from '../../types';
 
 const TIMEFRAMES: { label: string; value: TimeframeType }[] = [
-  { label: '1M', value: '1M' },
-  { label: '5M', value: '5M' },
-  { label: '1H', value: '1H' },
-  { label: '1D', value: '1D' },
+  { label: '1 min',  value: '1M' },
+  { label: '5 min',  value: '5M' },
+  { label: '1 hora', value: '1H' },
+  { label: '1 dia',  value: '1D' },
+];
+
+const DEFAULT_ASSETS: Asset[] = [
+  { symbol: 'PETR4', name: 'Petrobras PN' },
+  { symbol: 'VALE3', name: 'Vale ON' },
+  { symbol: 'ITUB4', name: 'Itaú Unibanco PN' },
+  { symbol: 'BBDC4', name: 'Bradesco PN' },
+  { symbol: 'ABEV3', name: 'Ambev ON' },
+  { symbol: 'WEGE3', name: 'WEG ON' },
+  { symbol: 'RENT3', name: 'Localiza ON' },
 ];
 
 export default function StrategyScreen() {
   const { isDarkMode } = useThemeStore();
   const theme = getTheme(isDarkMode);
-  
-  const {
-    strategies,
-    availableAssets,
-    currentStrategy,
-    loadStrategies,
-    loadAssets,
-    createStrategy,
-    updateStrategy,
-    setCurrentStrategy,
-  } = useStrategyStore();
+
+  const { strategies, availableAssets, currentStrategy, loadStrategies, loadAssets, createStrategy, updateStrategy, setCurrentStrategy } = useStrategyStore();
 
   const [selectedAsset, setSelectedAsset] = useState('PETR4');
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>('1D');
-  const [maShortPeriod, setMaShortPeriod] = useState(9);
-  const [maLongPeriod, setMaLongPeriod] = useState(21);
+  const [maShort, setMaShort] = useState(9);
+  const [maLong, setMaLong] = useState(21);
+  const [stopLoss, setStopLoss] = useState(2.0);
+  const [takeProfit, setTakeProfit] = useState(4.0);
   const [showAssetPicker, setShowAssetPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const assets = availableAssets.length > 0 ? availableAssets : DEFAULT_ASSETS;
+  const assetName = assets.find(a => a.symbol === selectedAsset)?.name ?? selectedAsset;
+  const isEdit = !!currentStrategy;
 
   useEffect(() => {
     loadStrategies();
@@ -55,304 +58,293 @@ export default function StrategyScreen() {
     if (currentStrategy) {
       setSelectedAsset(currentStrategy.asset);
       setSelectedTimeframe(currentStrategy.timeframe);
-      setMaShortPeriod(currentStrategy.ma_short_period);
-      setMaLongPeriod(currentStrategy.ma_long_period);
+      setMaShort(currentStrategy.ma_short_period);
+      setMaLong(currentStrategy.ma_long_period);
+      setStopLoss(currentStrategy.stop_loss_percent);
+      setTakeProfit(currentStrategy.take_profit_percent);
     }
   }, [currentStrategy]);
 
-  const handleSaveStrategy = async () => {
+  const handleSave = async () => {
+    if (maShort >= maLong) {
+      Alert.alert('Configuração inválida', 'O período da MA Curta deve ser menor que o da MA Longa.');
+      return;
+    }
+    setSaving(true);
     try {
-      if (currentStrategy) {
-        await updateStrategy(currentStrategy.id, {
-          asset: selectedAsset,
-          timeframe: selectedTimeframe,
-          ma_short_period: maShortPeriod,
-          ma_long_period: maLongPeriod,
-        });
-        Alert.alert('Sucesso', 'Estratégia atualizada com sucesso!');
+      const payload = {
+        asset: selectedAsset,
+        timeframe: selectedTimeframe,
+        ma_short_period: maShort,
+        ma_long_period: maLong,
+        stop_loss_percent: stopLoss,
+        take_profit_percent: takeProfit,
+      };
+      if (isEdit) {
+        await updateStrategy(currentStrategy.id, payload);
       } else {
-        await createStrategy({
-          name: `Estratégia ${selectedAsset}`,
-          asset: selectedAsset,
-          timeframe: selectedTimeframe,
-          ma_short_period: maShortPeriod,
-          ma_long_period: maLongPeriod,
-          stop_loss_percent: 2.0,
-          take_profit_percent: 4.0,
-          position_size: 100,
-        });
-        Alert.alert('Sucesso', 'Estratégia criada com sucesso!');
+        const s = await createStrategy({ name: `Estratégia ${selectedAsset}`, ...payload, position_size: 100 });
+        setCurrentStrategy(s);
       }
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar a estratégia.');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a estratégia. Verifique o backend.');
+    } finally {
+      setSaving(false);
     }
   };
 
+  const riskRatio = stopLoss > 0 ? (takeProfit / stopLoss).toFixed(1) : '—';
   const styles = createStyles(theme);
 
-  // Lista de ativos para o picker
-  const assets: Asset[] = availableAssets.length > 0 ? availableAssets : [
-    { symbol: 'PETR4', name: 'Petrobras PN' },
-    { symbol: 'VALE3', name: 'Vale ON' },
-    { symbol: 'ITUB4', name: 'Itaú Unibanco PN' },
-    { symbol: 'BBDC4', name: 'Bradesco PN' },
-    { symbol: 'ABEV3', name: 'Ambev ON' },
-  ];
-
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={theme.primary} />
-          <Text style={[styles.backText, { color: theme.primary }]}>Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.text }]}>Strategy Config</Text>
-        <View style={{ width: 60 }} />
-      </View>
-
-      {/* Asset Selector */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionLabel, { color: theme.text }]}>Asset</Text>
-          <TouchableOpacity
-            style={[styles.assetButton, { backgroundColor: theme.card }]}
-            onPress={() => setShowAssetPicker(!showAssetPicker)}
-          >
-            <Text style={[styles.assetText, { color: theme.text }]}>
-              {selectedAsset}
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </TouchableOpacity>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <View>
+          <Text style={[styles.title, { color: theme.text }]}>Configurar Estratégia</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {isEdit ? `Editando: ${currentStrategy.name}` : 'Nova estratégia de cruzamento de MAs'}
+          </Text>
         </View>
-
-        {showAssetPicker && (
-          <View style={[styles.pickerContainer, { backgroundColor: theme.card }]}>
-            <ScrollView style={styles.assetList} nestedScrollEnabled>
-              {assets.map((asset) => (
-                <TouchableOpacity
-                  key={asset.symbol}
-                  style={[
-                    styles.assetItem,
-                    selectedAsset === asset.symbol && styles.assetItemSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedAsset(asset.symbol);
-                    setShowAssetPicker(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.assetItemText,
-                      { color: selectedAsset === asset.symbol ? theme.primary : theme.text },
-                    ]}
-                  >
-                    {asset.symbol}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        {isEdit && (
+          <View style={[styles.activeBadge, { backgroundColor: theme.success + '22' }]}>
+            <Ionicons name="checkmark-circle" size={13} color={theme.success} />
+            <Text style={[styles.activeBadgeText, { color: theme.success }]}>Ativa</Text>
           </View>
         )}
       </View>
 
-      {/* Timeframe Selector */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: theme.text }]}>Timeframe</Text>
-        <View style={styles.timeframeContainer}>
-          {TIMEFRAMES.map((tf) => (
-            <TouchableOpacity
-              key={tf.value}
-              style={[
-                styles.timeframeButton,
-                {
-                  backgroundColor:
-                    selectedTimeframe === tf.value ? theme.card : 'transparent',
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={() => setSelectedTimeframe(tf.value)}
-            >
-              <Text
-                style={[
-                  styles.timeframeText,
-                  {
-                    color:
-                      selectedTimeframe === tf.value ? theme.text : theme.textSecondary,
-                  },
-                ]}
+      <View style={styles.body}>
+        {/* Ativo */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ATIVO</Text>
+          <TouchableOpacity
+            style={[styles.assetSelector, { backgroundColor: theme.card, borderColor: showAssetPicker ? theme.primary : theme.border }]}
+            onPress={() => setShowAssetPicker(!showAssetPicker)}
+          >
+            <View>
+              <Text style={[styles.assetSymbol, { color: theme.text }]}>{selectedAsset}</Text>
+              <Text style={[styles.assetName, { color: theme.textSecondary }]}>{assetName}</Text>
+            </View>
+            <Ionicons name={showAssetPicker ? 'chevron-up' : 'chevron-down'} size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          {showAssetPicker && (
+            <View style={[styles.pickerDropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {assets.map(a => (
+                <TouchableOpacity
+                  key={a.symbol}
+                  style={[styles.pickerItem, selectedAsset === a.symbol && { backgroundColor: theme.primary + '18' }]}
+                  onPress={() => { setSelectedAsset(a.symbol); setShowAssetPicker(false); }}
+                >
+                  <Text style={[styles.pickerSymbol, { color: selectedAsset === a.symbol ? theme.primary : theme.text }]}>{a.symbol}</Text>
+                  <Text style={[styles.pickerName, { color: theme.textSecondary }]}>{a.name}</Text>
+                  {selectedAsset === a.symbol && <Ionicons name="checkmark" size={16} color={theme.primary} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Timeframe */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>TIMEFRAME DO CANDLE</Text>
+          <View style={styles.tfRow}>
+            {TIMEFRAMES.map(tf => (
+              <TouchableOpacity
+                key={tf.value}
+                style={[styles.tfBtn, { borderColor: selectedTimeframe === tf.value ? theme.primary : theme.border, backgroundColor: selectedTimeframe === tf.value ? theme.primary + '18' : 'transparent' }]}
+                onPress={() => setSelectedTimeframe(tf.value)}
               >
-                {tf.label}
+                <Text style={[styles.tfLabel, { color: selectedTimeframe === tf.value ? theme.primary : theme.textSecondary }]}>{tf.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* MAs */}
+        <View style={[styles.section, styles.maCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>MÉDIAS MÓVEIS (MA CROSSOVER)</Text>
+          <Text style={[styles.maHint, { color: theme.textSecondary }]}>
+            O bot compra quando a MA Curta cruza acima da MA Longa, e vende no cruzamento inverso.
+          </Text>
+
+          {/* MA Curta */}
+          <View style={styles.sliderBlock}>
+            <View style={styles.sliderHeader}>
+              <View style={styles.sliderLabelRow}>
+                <View style={[styles.maColorDot, { backgroundColor: '#ffa726' }]} />
+                <Text style={[styles.sliderLabel, { color: theme.text }]}>MA Curta (rápida)</Text>
+              </View>
+              <View style={[styles.valuePill, { backgroundColor: '#ffa726' + '25' }]}>
+                <Text style={[styles.valueText, { color: '#ffa726' }]}>{maShort}</Text>
+              </View>
+            </View>
+            <Slider style={styles.slider} minimumValue={2} maximumValue={50} step={1}
+              value={maShort} onValueChange={v => setMaShort(v)}
+              minimumTrackTintColor='#ffa726' maximumTrackTintColor={theme.border} thumbTintColor='#ffa726' />
+          </View>
+
+          {/* MA Longa */}
+          <View style={styles.sliderBlock}>
+            <View style={styles.sliderHeader}>
+              <View style={styles.sliderLabelRow}>
+                <View style={[styles.maColorDot, { backgroundColor: '#42a5f5' }]} />
+                <Text style={[styles.sliderLabel, { color: theme.text }]}>MA Longa (lenta)</Text>
+              </View>
+              <View style={[styles.valuePill, { backgroundColor: '#42a5f5' + '25' }]}>
+                <Text style={[styles.valueText, { color: '#42a5f5' }]}>{maLong}</Text>
+              </View>
+            </View>
+            <Slider style={styles.slider} minimumValue={5} maximumValue={200} step={1}
+              value={maLong} onValueChange={v => setMaLong(v)}
+              minimumTrackTintColor='#42a5f5' maximumTrackTintColor={theme.border} thumbTintColor='#42a5f5' />
+          </View>
+
+          {maShort >= maLong && (
+            <View style={[styles.warning, { backgroundColor: theme.error + '18' }]}>
+              <Ionicons name="warning" size={14} color={theme.error} />
+              <Text style={[styles.warningText, { color: theme.error }]}>MA Curta deve ser menor que MA Longa</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Risco */}
+        <View style={[styles.section, styles.riskCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>GERENCIAMENTO DE RISCO</Text>
+          <View style={styles.riskRow}>
+            <View style={styles.riskItem}>
+              <Text style={[styles.riskLabel, { color: theme.textSecondary }]}>Stop Loss</Text>
+              <View style={[styles.riskInput, { borderColor: theme.error, backgroundColor: theme.error + '11' }]}>
+                <Text style={[styles.riskValue, { color: theme.error }]}>−{stopLoss.toFixed(1)}%</Text>
+              </View>
+              <Slider style={styles.slider} minimumValue={0.5} maximumValue={10} step={0.5}
+                value={stopLoss} onValueChange={v => setStopLoss(v)}
+                minimumTrackTintColor={theme.error} maximumTrackTintColor={theme.border} thumbTintColor={theme.error} />
+            </View>
+            <View style={styles.riskItem}>
+              <Text style={[styles.riskLabel, { color: theme.textSecondary }]}>Take Profit</Text>
+              <View style={[styles.riskInput, { borderColor: theme.success, backgroundColor: theme.success + '11' }]}>
+                <Text style={[styles.riskValue, { color: theme.success }]}>+{takeProfit.toFixed(1)}%</Text>
+              </View>
+              <Slider style={styles.slider} minimumValue={0.5} maximumValue={20} step={0.5}
+                value={takeProfit} onValueChange={v => setTakeProfit(v)}
+                minimumTrackTintColor={theme.success} maximumTrackTintColor={theme.border} thumbTintColor={theme.success} />
+            </View>
+          </View>
+          <View style={[styles.ratioBar, { backgroundColor: theme.border }]}>
+            <Ionicons name="git-compare-outline" size={14} color={theme.textSecondary} />
+            <Text style={[styles.ratioText, { color: theme.textSecondary }]}>
+              Risco/Retorno: <Text style={{ color: theme.text, fontWeight: '700' }}>1:{riskRatio}</Text>
+              {parseFloat(riskRatio) >= 2 ? '  ✅ Bom' : '  ⚠️ Revise'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Estratégias salvas */}
+        {strategies.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ESTRATÉGIAS SALVAS</Text>
+            {strategies.map(s => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.strategyCard, { backgroundColor: theme.card, borderColor: currentStrategy?.id === s.id ? theme.primary : theme.border }]}
+                onPress={() => setCurrentStrategy(s)}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.strategyName, { color: theme.text }]}>{s.name}</Text>
+                  <Text style={[styles.strategyDetail, { color: theme.textSecondary }]}>
+                    {s.asset} · {s.timeframe} · MA {s.ma_short_period}/{s.ma_long_period}
+                  </Text>
+                </View>
+                {currentStrategy?.id === s.id && <Ionicons name="radio-button-on" size={18} color={theme.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Botão salvar */}
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: saved ? theme.success : theme.primary, opacity: saving ? 0.7 : 1 }]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? <ActivityIndicator color="#fff" size="small" /> : (
+            <>
+              <Ionicons name={saved ? 'checkmark-circle' : (isEdit ? 'save' : 'add-circle')} size={20} color="#fff" />
+              <Text style={styles.saveBtnText}>
+                {saved ? 'Estratégia salva!' : (isEdit ? 'Atualizar Estratégia' : 'Criar Estratégia')}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
-
-      {/* MA Short Period Slider */}
-      <View style={styles.section}>
-        <View style={styles.sliderHeader}>
-          <Text style={[styles.sectionLabel, { color: theme.text }]}>
-            MA Short Period
-          </Text>
-          <Text style={[styles.sliderValue, { color: theme.text }]}>
-            {maShortPeriod}
-          </Text>
-        </View>
-        <Slider
-          style={styles.slider}
-          minimumValue={2}
-          maximumValue={50}
-          step={1}
-          value={maShortPeriod}
-          onValueChange={setMaShortPeriod}
-          minimumTrackTintColor={theme.primary}
-          maximumTrackTintColor={theme.border}
-          thumbTintColor={theme.text}
-        />
-      </View>
-
-      {/* MA Long Period Slider */}
-      <View style={styles.section}>
-        <View style={styles.sliderHeader}>
-          <Text style={[styles.sectionLabel, { color: theme.text }]}>
-            MA Long Period
-          </Text>
-          <Text style={[styles.sliderValue, { color: theme.text }]}>
-            {maLongPeriod}
-          </Text>
-        </View>
-        <Slider
-          style={styles.slider}
-          minimumValue={5}
-          maximumValue={200}
-          step={1}
-          value={maLongPeriod}
-          onValueChange={setMaLongPeriod}
-          minimumTrackTintColor={theme.primary}
-          maximumTrackTintColor={theme.border}
-          thumbTintColor={theme.text}
-        />
-      </View>
-
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: theme.success }]}
-        onPress={handleSaveStrategy}
-      >
-        <Text style={styles.saveButtonText}>Save Strategy</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const createStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: 20,
-      paddingTop: 60,
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    backText: {
-      fontSize: 16,
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-    },
-    section: {
-      paddingHorizontal: 20,
-      paddingVertical: 15,
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    sectionLabel: {
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    assetButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 15,
-      paddingVertical: 8,
-      borderRadius: 8,
-      gap: 8,
-    },
-    assetText: {
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    pickerContainer: {
-      marginTop: 10,
-      borderRadius: 12,
-      maxHeight: 200,
-    },
-    assetList: {
-      padding: 10,
-    },
-    assetItem: {
-      paddingVertical: 12,
-      paddingHorizontal: 15,
-      borderRadius: 8,
-    },
-    assetItemSelected: {
-      backgroundColor: 'rgba(0, 119, 255, 0.1)',
-    },
-    assetItemText: {
-      fontSize: 16,
-      textAlign: 'center',
-    },
-    timeframeContainer: {
-      flexDirection: 'row',
-      marginTop: 15,
-      gap: 10,
-    },
-    timeframeButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      borderWidth: 1,
-      alignItems: 'center',
-    },
-    timeframeText: {
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    sliderHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    sliderValue: {
-      fontSize: 18,
-      fontWeight: 'bold',
-    },
-    slider: {
-      width: '100%',
-      height: 40,
-    },
-    saveButton: {
-      margin: 20,
-      padding: 16,
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    saveButtonText: {
-      color: '#fff',
-      fontSize: 18,
-      fontWeight: 'bold',
-    },
-  });
+const createStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, borderBottomWidth: 1,
+  },
+  title: { fontSize: 19, fontWeight: '700' },
+  subtitle: { fontSize: 12, marginTop: 3 },
+  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  activeBadgeText: { fontSize: 12, fontWeight: '600' },
+  body: { padding: 16, gap: 20, paddingBottom: 40 },
+  section: { gap: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  assetSelector: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 14, borderRadius: 12, borderWidth: 1,
+  },
+  assetSymbol: { fontSize: 17, fontWeight: '700' },
+  assetName: { fontSize: 12, marginTop: 2 },
+  pickerDropdown: {
+    borderRadius: 12, borderWidth: 1, overflow: 'hidden',
+  },
+  pickerItem: {
+    flexDirection: 'row', alignItems: 'center', padding: 13,
+    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.05)', gap: 10,
+  },
+  pickerSymbol: { fontSize: 14, fontWeight: '700', width: 52 },
+  pickerName: { flex: 1, fontSize: 13 },
+  tfRow: { flexDirection: 'row', gap: 8 },
+  tfBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  tfLabel: { fontSize: 13, fontWeight: '600' },
+  maCard: { borderRadius: 14, padding: 16 },
+  maHint: { fontSize: 12, lineHeight: 18, marginBottom: 4 },
+  sliderBlock: { gap: 4 },
+  sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sliderLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  maColorDot: { width: 10, height: 10, borderRadius: 5 },
+  sliderLabel: { fontSize: 14, fontWeight: '500' },
+  valuePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  valueText: { fontSize: 15, fontWeight: '800' },
+  slider: { width: '100%', height: 36 },
+  warning: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderRadius: 8 },
+  warningText: { fontSize: 12 },
+  riskCard: { borderRadius: 14, padding: 16, gap: 12 },
+  riskRow: { flexDirection: 'row', gap: 16 },
+  riskItem: { flex: 1, gap: 6 },
+  riskLabel: { fontSize: 12, fontWeight: '600' },
+  riskInput: { alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  riskValue: { fontSize: 18, fontWeight: '800' },
+  ratioBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8 },
+  ratioText: { fontSize: 13 },
+  strategyCard: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 14, borderRadius: 12, borderWidth: 1,
+  },
+  strategyName: { fontSize: 14, fontWeight: '600' },
+  strategyDetail: { fontSize: 11, marginTop: 3 },
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    padding: 16, borderRadius: 14, gap: 10, marginTop: 4,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
